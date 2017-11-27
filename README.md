@@ -7,7 +7,9 @@ The tool is named after the [Akita dog breed](https://en.wikipedia.org/wiki/Akit
 
 ## Installation
 
-The akita tool uses packages outside of the standard library, each of those packages need to be imported on the go environment before compiling the tool:
+The akita tool is written using [Go](https://golang.org/).  So the first step is to download and install Go and set your development environment.
+
+Akita uses packages outside of the standard library, each of those packages need to be imported on the go environment before compiling the tool:
 
 ```
 go get github.com/fatih/color
