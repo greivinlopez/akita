@@ -13,6 +13,18 @@ Akita uses packages outside of the standard library, each of those packages need
 
 ```
 go get github.com/fatih/color
-go get github.com/smallnest/goreq
+go get gopkg.in/fatih/set.v0
 go get github.com/jackdanger/collectlinks
+```
+Download the code and put it on a folder named 'akita' inside the $GOPATH/src folder of your Go environment.
+
+Compile the tool:
+```
+go build akita.go
+```
+## Run the tool
+
+To run the tool call it as:
+```
+./akita -website="http://www.yoursite.com"
 ```
