@@ -14,4 +14,5 @@ Akita uses packages outside of the standard library, each of those packages need
 ```
 go get github.com/fatih/color
 go get github.com/smallnest/goreq
+go get github.com/jackdanger/collectlinks
 ```
