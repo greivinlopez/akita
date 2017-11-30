@@ -82,7 +82,6 @@ func crawl(uri string) {
 	s.Add(uri)
 
 	links := collectlinks.All(resp.Body)
-	//fmt.Printf("Links: %v", links)
 
 	for _, link := range links {
 		absolute := fixUrl(link, uri)
