@@ -23,9 +23,11 @@ package main
 import (
 	"crypto/tls"
 	"flag"
-	"fmt"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/jackdanger/collectlinks"
@@ -33,7 +35,7 @@ import (
 )
 
 const (
-	versionNumber = "1.01"
+	versionNumber = "1.03"
 )
 
 var (
@@ -49,7 +51,18 @@ var (
 
 	// Http client
 	client http.Client
+
+	info *log.Logger
+
+	// Slice of broken link reports
+	errors []BrokenLink
 )
+
+type BrokenLink struct {
+	Origin       string
+	Target       string
+	ErrorMessage string
+}
 
 func fixUrl(href, base string) string {
 	uri, err := url.Parse(href)
@@ -64,19 +77,26 @@ func fixUrl(href, base string) string {
 	return uri.String()
 }
 
-func crawl(uri string) {
+func reportError(origin string, uri string, message string) {
+	broken := BrokenLink{Origin: origin, Target: uri, ErrorMessage: message}
+	errors = append(errors, broken)
+}
+
+func crawl(origin string, uri string) {
 	printGreen := green.SprintFunc()
 	printRed := red.SprintFunc()
 
 	resp, err := client.Get(uri)
 	if err != nil {
-		fmt.Printf("Testing %s -> %s\n", uri, printRed("Fail: "+err.Error()))
+		info.Printf("Testing %s -> %s", uri, printRed("Fail: "+err.Error()))
+		reportError(origin, uri, err.Error())
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == 200 {
-		fmt.Printf("Testing %s -> %s\n", uri, printGreen("OK"))
+		info.Printf("Testing %s -> %s", uri, printGreen("OK"))
 	} else {
-		fmt.Printf("Testing %s -> %s\n", uri, printRed("Fail: "+resp.Status))
+		info.Printf("Testing %s -> %s", uri, printRed("Fail: "+resp.Status))
+		reportError(origin, uri, "Fail: "+resp.Status)
 	}
 
 	s.Add(uri)
@@ -88,10 +108,10 @@ func crawl(uri string) {
 		if !s.Has(absolute) && uri != "" {
 			u, err := url.Parse(absolute)
 			if err != nil {
-				panic(err)
+				info.Printf(err.Error())
 			}
 			if u.Host == "www.westernasset.com" {
-				crawl(absolute)
+				crawl(uri, absolute)
 			}
 		}
 	}
@@ -116,19 +136,30 @@ func init() {
 
 	// Initialize our thread safe Set
 	s = set.New()
+
+	info = log.New(os.Stdout, "", 0)
 }
 
 func main() {
+	// Store start time
+	start := time.Now()
+
 	// Parse command line parameters
 	flag.Parse()
 	if version {
-		fmt.Println("akita version " + versionNumber)
+		info.Println("akita version " + versionNumber)
 	} else {
 		if website != "" {
 			// Start crawling the website from the given root URL
-			crawl(website)
+			crawl(website, website)
 		} else {
-			fmt.Println("Please provide website: ./akita -website=\"http://www.google.com\" ")
+			info.Println("Please provide website: ./akita -website=\"http://www.google.com\" ")
 		}
 	}
+
+	// Output total time elapsed
+	info.Println("Task completed")
+	info.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
+
+	info.Printf("%v", errors)
 }
