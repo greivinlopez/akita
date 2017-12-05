@@ -22,6 +22,7 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/csv"
 	"flag"
 	"log"
 	"net/http"
@@ -35,7 +36,7 @@ import (
 )
 
 const (
-	versionNumber = "1.03"
+	versionNumber = "1.05"
 )
 
 var (
@@ -58,10 +59,26 @@ var (
 	errors []BrokenLink
 )
 
+// BrokenLink represents the report of an error found when testing GET
+// a given URL. The tool will crawl the website and each time it founds
+// a problem it will create a new BrokenLink and stores it into a collection
+// of reports that will eventually be serialized into a report file.
 type BrokenLink struct {
 	Origin       string
 	Target       string
 	ErrorMessage string
+}
+
+// GetHeaders returns an array of strings containing the header titles
+// intended for a CSV serialization of a collection of BrokenLink structures.
+func getHeaders() []string {
+	return []string{"Origin", "Target", "Error"}
+}
+
+// GetValues returns an array of strings containing the values of a given
+// BrokenLink report. The result is intended to be serialized on a CSV file.
+func (broken *BrokenLink) getValues() []string {
+	return []string{broken.Origin, broken.Target, broken.ErrorMessage}
 }
 
 func fixUrl(href, base string) string {
@@ -117,6 +134,37 @@ func crawl(origin string, uri string) {
 	}
 }
 
+func createReport() error {
+	errorsCount := len(errors)
+	records := make([][]string, errorsCount)
+
+	for i := 0; i < errorsCount; i++ {
+		records[i] = errors[i].getValues()
+	}
+
+	// write the file
+	f, err := os.Create("result.csv")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	w := csv.NewWriter(f)
+
+	// Write headers
+	headers := getHeaders()
+	if err = w.Write(headers); err != nil {
+		return err
+	}
+
+	w.WriteAll(records) // calls Flush internally
+
+	if err := w.Error(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func init() {
 	// Command line parameters
 	flag.BoolVar(&version, "version", false, "Use this flag if you want to verify the version of the tool.")
@@ -161,5 +209,7 @@ func main() {
 	info.Println("Task completed")
 	info.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
 
-	info.Printf("%v", errors)
+	if len(errors) > 0 {
+		createReport()
+	}
 }
