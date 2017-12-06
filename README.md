@@ -22,6 +22,29 @@ Compile the tool:
 ```
 go build akita.go
 ```
+
+### Base Host Configuration
+
+The server application follows the recomendation of the twelve-factor app regarding [configuration](http://12factor.net/config). Store the configuration in environment variables. To set the variables use the "export" command. For instance:
+
+```console
+sudo nano ~/.bash_profile
+```
+
+Add the following line to the end of the file
+
+```console
+export AK_HOST="www.yoursite.com"
+```
+
+Save the file and return to the command line.  Run the new configuration
+
+```console
+source ~/.bash_profile
+```
+
+The variable you just set is used by the tool to determine URLs that are outside the bounds of the target website.
+
 ## Run the tool
 
 To run the tool call it as:
