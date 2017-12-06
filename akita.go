@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	versionNumber = "1.05"
+	versionNumber = "1.07"
 )
 
 var (
@@ -52,6 +52,9 @@ var (
 
 	// Http client
 	client http.Client
+
+	// Base website Host
+	baseHost string
 
 	info *log.Logger
 
@@ -99,7 +102,7 @@ func reportError(origin string, uri string, message string) {
 	errors = append(errors, broken)
 }
 
-func crawl(origin string, uri string) {
+func process(origin string, uri string) []string {
 	printGreen := green.SprintFunc()
 	printRed := red.SprintFunc()
 
@@ -107,6 +110,7 @@ func crawl(origin string, uri string) {
 	if err != nil {
 		info.Printf("Testing %s -> %s", uri, printRed("Fail: "+err.Error()))
 		reportError(origin, uri, err.Error())
+		return nil
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == 200 {
@@ -114,20 +118,33 @@ func crawl(origin string, uri string) {
 	} else {
 		info.Printf("Testing %s -> %s", uri, printRed("Fail: "+resp.Status))
 		reportError(origin, uri, "Fail: "+resp.Status)
+		return nil
 	}
+
+	links := collectlinks.All(resp.Body)
+	return links
+}
+
+func crawl(origin string, uri string) {
+	links := process(origin, uri)
 
 	s.Add(uri)
 
-	links := collectlinks.All(resp.Body)
-
 	for _, link := range links {
+		// Convert relative path into absolute
 		absolute := fixUrl(link, uri)
+		// Avoid visiting a URI twice
 		if !s.Has(absolute) && uri != "" {
 			u, err := url.Parse(absolute)
 			if err != nil {
 				info.Printf(err.Error())
 			}
-			if u.Host == "www.westernasset.com" {
+			// Test link
+			if baseHost != "" {
+				if u.Host == baseHost {
+					crawl(uri, absolute)
+				}
+			} else {
 				crawl(uri, absolute)
 			}
 		}
@@ -186,6 +203,9 @@ func init() {
 	s = set.New()
 
 	info = log.New(os.Stdout, "", 0)
+
+	// Retrieve the base host from a previously set environment variable
+	baseHost = os.Getenv("AK_HOST")
 }
 
 func main() {
